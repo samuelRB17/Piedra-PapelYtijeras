@@ -126,24 +126,21 @@
       j2PickEl.textContent = jugada2;
 
       if (jugada1 === jugada2) {
-        resultadoEl.textContent = Empate: ambos eligieron ${jugada1};
+        resultadoEl.textContent = `Empate: ambos eligieron ${jugada1}`;
       } else if (winMap[jugada1] === jugada2) {
-        resultadoEl.textContent = Jugador 1 gana (${jugada1} vence a ${jugada2});
+        resultadoEl.textContent = `Jugador 1 gana (${jugada1} vence a ${jugada2})`;
         score.j1++;
       } else {
-        resultadoEl.textContent = Jugador 2 gana (${jugada2} vence a ${jugada1});
+        resultadoEl.textContent = `Jugador 2 gana (${jugada2} vence a ${jugada1})`;
         score.j2++;
       }
 
-      // Mostrar pregunta/reto random
       const randomIndex = Math.floor(Math.random() * preguntas.length);
       preguntaEl.textContent = "Reto: " + preguntas[randomIndex];
 
-      // Actualizar marcador
       scoreJ1.textContent = score.j1;
       scoreJ2.textContent = score.j2;
 
-      // Reiniciar turno
       turno = 1;
       jugada1 = null;
       jugada2 = null;
@@ -164,3 +161,4 @@
   </script>
 </body>
 </html>
+

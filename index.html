@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Piedra, Papel o Tijera — 2 Jugadores</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#0b1220; --accent:#06b6d4; --muted:#94a3b8; --glass: rgba(255,255,255,0.04);
+      --win:#10b981; --lose:#ef4444;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;}
+    body{
+      margin:0; background:linear-gradient(180deg,#071029 0%, var(--bg) 100%); color:#e6eef6; display:flex; align-items:center; justify-content:center; padding:32px;
+    }
+    .container{width:100%; max-width:880px; background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:16px; padding:28px; box-shadow:0 8px 30px rgba(2,6,23,0.7);}
+    header{display:flex; gap:16px; align-items:center; margin-bottom:18px}
+    header h1{font-size:1.4rem; margin:0}
+    .scoreboard{margin-left:auto; text-align:right}
+    .scoreboard p{margin:0; font-size:0.95rem; color:var(--muted)}
+    .game{display:grid; grid-template-columns: 1fr 320px; gap:20px; align-items:start}
+    @media (max-width:780px){ .game{grid-template-columns:1fr;}}
+    .panel{background:var(--card); border-radius:12px; padding:18px}
+    .choices{display:flex; gap:12px; justify-content:center; padding:12px}
+    .choice-btn{flex:1; min-width:88px; background:var(--glass); border:1px solid rgba(255,255,255,0.04); color:inherit; padding:14px; border-radius:10px; font-size:1rem; cursor:pointer; transition:transform .12s ease, box-shadow .12s; display:flex; flex-direction:column; align-items:center; gap:8px}
+    .choice-btn[aria-pressed="true"]{box-shadow:0 6px 18px rgba(2,6,23,0.6); transform:scale(1.03)}
+    .result{display:flex; flex-direction:column; gap:8px; align-items:center; padding-top:8px; text-align:center}
+    .btn{background:transparent; color:var(--accent); border:1px solid rgba(6,182,212,0.12); padding:8px 12px; border-radius:8px; cursor:pointer}
+    .btn.secondary{color:var(--muted); border-color:rgba(148,163,184,0.06)}
+    .message{margin-top:10px; font-size:0.95rem; color:var(--muted)}
+    footer{margin-top:14px; display:flex; justify-content:space-between; align-items:center}
+    .credits{font-size:0.82rem; color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+    <header>
+      <div>
+        <h1>Piedra, Papel o Tijera</h1>
+        <div class="message" id="turno-texto">Turno de Jugador 1</div>
+      </div>
+      <div class="scoreboard" aria-live="polite">
+        <p>Puntos — J1: <span id="score-j1">0</span>  •  J2: <span id="score-j2">0</span></p>
+      </div>
+    </header>
+
+    <main class="game">
+      <section class="panel">
+        <h2 style="margin-top:0">Selecciona</h2>
+        <div class="choices" role="radiogroup" aria-label="Opciones de juego">
+          <button class="choice-btn" data-choice="piedra"> <div class="emoji">✊</div> <div>Piedra</div></button>
+          <button class="choice-btn" data-choice="papel"> <div class="emoji">✋</div> <div>Papel</div></button>
+          <button class="choice-btn" data-choice="tijera"> <div class="emoji">✌</div> <div>Tijera</div></button>
+        </div>
+
+        <div class="result" aria-live="polite">
+          <div id="resultado">Esperando jugadas...</div>
+          <div id="pregunta"></div>
+        </div>
+
+        <div style="margin-top:12px; display:flex; gap:8px; align-items:center">
+          <button class="btn secondary" id="reset-btn">Reiniciar marcador</button>
+        </div>
+      </section>
+
+      <aside class="right-col">
+        <div class="panel status-card">
+          <h3 style="margin:0">Últimas jugadas</h3>
+          <div class="pick-display">
+            <div class="pick">J1: <div id="j1-pick">—</div></div>
+            <div class="pick">J2: <div id="j2-pick">—</div></div>
+          </div>
+        </div>
+
+        <footer>
+          <div class="credits">Hecho con 💙 — ahora para 2 jugadores</div>
+        </footer>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const winMap = { piedra: 'tijera', papel: 'piedra', tijera: 'papel' };
+    const preguntas = [
+      "Toma 2 tragos",
+      "Cuenta tu secreto más vergonzoso",
+      "Reto: canta una canción",
+      "Elige a alguien para que tome 3 tragos",
+      "Haz una imitación graciosa",
+      "Baila por 10 segundos"
+    ];
+
+    let turno = 1;
+    let jugada1 = null;
+    let jugada2 = null;
+    let score = { j1:0, j2:0 };
+
+    const botones = document.querySelectorAll('.choice-btn');
+    const turnoTexto = document.getElementById('turno-texto');
+    const resultadoEl = document.getElementById('resultado');
+    const preguntaEl = document.getElementById('pregunta');
+    const j1PickEl = document.getElementById('j1-pick');
+    const j2PickEl = document.getElementById('j2-pick');
+    const scoreJ1 = document.getElementById('score-j1');
+    const scoreJ2 = document.getElementById('score-j2');
+    const resetBtn = document.getElementById('reset-btn');
+
+    botones.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (turno === 1) {
+          jugada1 = btn.dataset.choice;
+          turno = 2;
+          turnoTexto.textContent = "Turno de Jugador 2";
+          resultadoEl.textContent = "Esperando jugada del Jugador 2...";
+        } else if (turno === 2) {
+          jugada2 = btn.dataset.choice;
+          mostrarResultado();
+        }
+      });
+    });
+
+    function mostrarResultado() {
+      j1PickEl.textContent = jugada1;
+      j2PickEl.textContent = jugada2;
+
+      if (jugada1 === jugada2) {
+        resultadoEl.textContent = Empate: ambos eligieron ${jugada1};
+      } else if (winMap[jugada1] === jugada2) {
+        resultadoEl.textContent = Jugador 1 gana (${jugada1} vence a ${jugada2});
+        score.j1++;
+      } else {
+        resultadoEl.textContent = Jugador 2 gana (${jugada2} vence a ${jugada1});
+        score.j2++;
+      }
+
+      // Mostrar pregunta/reto random
+      const randomIndex = Math.floor(Math.random() * preguntas.length);
+      preguntaEl.textContent = "Reto: " + preguntas[randomIndex];
+
+      // Actualizar marcador
+      scoreJ1.textContent = score.j1;
+      scoreJ2.textContent = score.j2;
+
+      // Reiniciar turno
+      turno = 1;
+      jugada1 = null;
+      jugada2 = null;
+      turnoTexto.textContent = "Turno de Jugador 1";
+    }
+
+    resetBtn.addEventListener('click', () => {
+      score = { j1:0, j2:0 };
+      scoreJ1.textContent = "0";
+      scoreJ2.textContent = "0";
+      j1PickEl.textContent = "—";
+      j2PickEl.textContent = "—";
+      resultadoEl.textContent = "Marcador reiniciado";
+      preguntaEl.textContent = "";
+      turno = 1;
+      turnoTexto.textContent = "Turno de Jugador 1";
+    });
+  </script>
+</body>
+</html>
